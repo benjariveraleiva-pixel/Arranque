@@ -1,4 +1,6 @@
 from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -24,28 +26,28 @@ class Product(models.Model):
         return f"{self.name} ({self.sku})"
 
 class AlertRule(models.Model):
-    name = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
-    condition_type = models.CharField(max_length=20, choices=[
-        ('GT', 'Greater Than'),
-        ('LT', 'Less Than'),
-        ('EQ', 'Equal To')
-    ])
-    threshold_value = models.FloatField()
-    is_active = models.BooleanField(default=True)
+    name = models.CharField(max_length=200)
+    condition = models.CharField(max_length=500)
+    severity_choices = [
+        ('low', 'Baja'),
+        ('medium', 'Media'),
+        ('high', 'Alta'),
+    ]
+    severity = models.CharField(max_length=10, choices=severity_choices)
+    status = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    
     def __str__(self):
-        return f"{self.name} ({self.get_condition_type_display()} {self.threshold_value})"
+        return self.name
+
 
 class ProductAlertRule(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     alert_rule = models.ForeignKey(AlertRule, on_delete=models.CASCADE)
+    threshold = models.FloatField()
+    status = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ['product', 'alert_rule']
-
+    
     def __str__(self):
         return f"{self.product} - {self.alert_rule}"
 
@@ -88,3 +90,34 @@ class Measurement(models.Model):
     
     def __str__(self):
         return f"{self.device}: {self.value} {self.unit} at {self.recorded_at}"
+    
+class AlertEvent(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    product_alert_rule = models.ForeignKey(ProductAlertRule, on_delete=models.CASCADE)
+    measured_value = models.FloatField()
+    status_choices = [
+        ('active', 'Activa'),
+        ('resolved', 'Resuelta'),
+        ('acknowledged', 'Reconocida'),
+    ]
+    status = models.CharField(max_length=15, choices=status_choices, default='active')
+    triggered_at = models.DateTimeField(default=timezone.now)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Alerta: {self.device} - {self.product_alert_rule}"
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    role_choices = [
+        ('admin', 'Administrador'),
+        ('operator', 'Operador'),
+        ('viewer', 'Visualizador'),
+    ]
+    role = models.CharField(max_length=10, choices=role_choices, default='viewer')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.organization}"
