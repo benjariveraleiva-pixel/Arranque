@@ -39,7 +39,6 @@ class AlertRule(models.Model):
     
     def __str__(self):
         return self.name
-
 class ProductAlertRule(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     alert_rule = models.ForeignKey(AlertRule, on_delete=models.CASCADE)
